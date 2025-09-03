@@ -1,7 +1,6 @@
+import streamlit as st
 import pandas as pd
-from datetime import datetime
 import matplotlib.pyplot as plt
-
 
 class FlightFinder:
     def __init__(self):
@@ -45,198 +44,167 @@ class FlightFinder:
             return flights.iloc[0]
         return None
     
-    def display_flight_details(self, flight):
-        """Display detailed information about a flight"""
-        print(f"\n{'='*60}")
-        print(f"🎯 CHEAPEST FLIGHT FOUND!")
-        print(f"{'='*60}")
-        print(f"✈️  Airline: {flight['airline']}")
-        print(f"🛫 Route: {flight['from']} → {flight['to']}")
-        print(f"💰 Price: ${flight['price']}")
-        print(f"⏰ Duration: {flight['duration']}")
-        print(f"🕐 Departure: {flight['departure']}")
-        print(f"🕐 Arrival: {flight['arrival']}")
-        stops_text = "Direct" if flight['stops'] == 0 else f"{flight['stops']} stop(s)"
-        print(f"🔄 Stops: {stops_text}")
-        print(f"{'='*60}")
-    
-    def display_all_flights(self, flights):
-        """Display all flights in a formatted table"""
-        if flights.empty:
-            print("\n❌ No flights found for this route.")
-            return
-            
-        print(f"\n📋 ALL FLIGHTS ({len(flights)} found)")
-        print("-" * 120)
-        print(f"{'Rank':<4} {'Airline':<12} {'Price':<8} {'Duration':<10} {'Departure':<10} {'Arrival':<10} {'Stops':<8}")
-        print("-" * 120)
-        
-        for idx, (_, flight) in enumerate(flights.iterrows(), 1):
-            price_indicator = "🏆" if idx == 1 else "  "
-            stops_text = "Direct" if flight['stops'] == 0 else f"{flight['stops']} stop"
-            print(f"{price_indicator}{idx:<3} {flight['airline']:<12} ${flight['price']:<7} {flight['duration']:<10} {flight['departure']:<10} {flight['arrival']:<10} {stops_text:<8}")
-    
-    def create_price_visualization(self, flights, from_city, to_city):
+    def create_price_chart(self, flights, from_city, to_city):
         """Create a bar chart showing flight prices"""
         if flights.empty:
-            return
+            return None
             
-        plt.figure(figsize=(12, 6))
+        fig, ax = plt.subplots(figsize=(10, 6))
         
         # Create color map - cheapest flight gets different color
         colors = ['#10B981' if i == 0 else '#3B82F6' for i in range(len(flights))]
         
-        bars = plt.bar(range(len(flights)), flights['price'], color=colors, alpha=0.8)
+        bars = ax.bar(range(len(flights)), flights['price'], color=colors, alpha=0.8)
         
         # Add price labels on bars
         for i, (bar, price) in enumerate(zip(bars, flights['price'])):
-            plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 5, 
-                    f'${price}', ha='center', va='bottom', fontweight='bold')
+            ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 5, 
+                   f'${price}', ha='center', va='bottom', fontweight='bold')
         
-        plt.title(f'Flight Prices: {from_city} → {to_city}', fontsize=16, fontweight='bold')
-        plt.xlabel('Airlines', fontsize=12)
-        plt.ylabel('Price ($)', fontsize=12)
+        ax.set_title(f'Flight Prices: {from_city} → {to_city}', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Airlines', fontsize=12)
+        ax.set_ylabel('Price ($)', fontsize=12)
         
         # Set x-axis labels to airline names
-        plt.xticks(range(len(flights)), flights['airline'], rotation=45)
+        ax.set_xticks(range(len(flights)))
+        ax.set_xticklabels(flights['airline'], rotation=45)
         
         # Add grid for better readability
-        plt.grid(axis='y', alpha=0.3)
-        
-        # Highlight cheapest flight
-        cheapest_idx = flights['price'].idxmin()
-        cheapest_pos = flights.index.get_loc(cheapest_idx)
-        plt.annotate('CHEAPEST!', xy=(cheapest_pos, flights.iloc[0]['price']), 
-                    xytext=(cheapest_pos, flights.iloc[0]['price'] + 50),
-                    arrowprops=dict(arrowstyle='->', color='green', lw=2),
-                    fontsize=12, fontweight='bold', color='green', ha='center')
+        ax.grid(axis='y', alpha=0.3)
         
         plt.tight_layout()
-        plt.show()
-    
-    def run_interactive_search(self):
-        """Run the interactive flight search interface"""
-        print("\n" + "="*60)
-        print("✈️  WELCOME TO CHEAPEST FLIGHT FINDER")
-        print("="*60)
-        
-        cities = self.get_unique_cities()
-        
-        while True:
-            print(f"\n📍 Available Cities:")
-            for i, city in enumerate(cities, 1):
-                print(f"  {i}. {city}")
-            
-            try:
-                # Get departure city
-                print(f"\n🛫 Select departure city (1-{len(cities)}) or 0 to exit:")
-                from_choice = int(input("Enter number: "))
-                
-                if from_choice == 0:
-                    print("👋 Thank you for using Flight Finder!")
-                    break
-                    
-                if 1 <= from_choice <= len(cities):
-                    from_city = cities[from_choice - 1]
-                else:
-                    print("❌ Invalid choice. Please try again.")
-                    continue
-                
-                # Get destination city
-                available_destinations = [city for city in cities if city != from_city]
-                print(f"\n🛬 Available destinations from {from_city}:")
-                for i, city in enumerate(available_destinations, 1):
-                    print(f"  {i}. {city}")
-                
-                print(f"\nSelect destination city (1-{len(available_destinations)}):")
-                to_choice = int(input("Enter number: "))
-                
-                if 1 <= to_choice <= len(available_destinations):
-                    to_city = available_destinations[to_choice - 1]
-                else:
-                    print("❌ Invalid choice. Please try again.")
-                    continue
-                
-                # Search for flights
-                print(f"\n🔍 Searching flights from {from_city} to {to_city}...")
-                
-                all_flights = self.find_flights(from_city, to_city)
-                cheapest = self.find_cheapest_flight(from_city, to_city)
-                
-                if cheapest is not None:
-                    # Display cheapest flight
-                    self.display_flight_details(cheapest)
-                    
-                    # Display all flights
-                    self.display_all_flights(all_flights)
-                    
-                    # Ask if user wants to see visualization
-                    show_viz = input("\n📊 Would you like to see a price comparison chart? (y/n): ")
-                    if show_viz.lower() == 'y':
-                        self.create_price_visualization(all_flights, from_city, to_city)
-                else:
-                    print(f"\n❌ Sorry, no flights found from {from_city} to {to_city}")
-                
-                # Ask if user wants to search again
-                continue_search = input(f"\n🔄 Would you like to search for another route? (y/n): ")
-                if continue_search.lower() != 'y':
-                    print("👋 Thank you for using Flight Finder!")
-                    break
-                    
-            except ValueError:
-                print("❌ Please enter a valid number.")
-            except KeyboardInterrupt:
-                print("\n\n👋 Goodbye!")
-                break
-    
-    def get_route_analytics(self):
-        """Display analytics about all available routes"""
-        print("\n" + "="*60)
-        print("📊 FLIGHT ROUTE ANALYTICS")
-        print("="*60)
-        
-        # Price statistics
-        print(f"\n💰 Price Statistics:")
-        print(f"   Cheapest flight: ${self.df['price'].min()}")
-        print(f"   Most expensive: ${self.df['price'].max()}")
-        print(f"   Average price: ${self.df['price'].mean():.2f}")
-        
-        # Airline statistics
-        print(f"\n✈️  Airlines:")
-        airline_counts = self.df['airline'].value_counts()
-        for airline, count in airline_counts.items():
-            avg_price = self.df[self.df['airline'] == airline]['price'].mean()
-            print(f"   {airline}: {count} flights (avg: ${avg_price:.2f})")
-        
-        # Route statistics
-        print(f"\n🛣️  Popular Routes:")
-        routes = self.df.groupby(['from', 'to']).size().sort_values(ascending=False)
-        for (from_city, to_city), count in routes.head().items():
-            cheapest_price = self.df[(self.df['from'] == from_city) & 
-                                   (self.df['to'] == to_city)]['price'].min()
-            print(f"   {from_city} → {to_city}: {count} flights (cheapest: ${cheapest_price})")
+        return fig
 
+# Initialize the flight finder
+@st.cache_data
+def get_flight_finder():
+    return FlightFinder()
 
 def main():
-    """Main function to run the flight finder application"""
-    finder = FlightFinder()
+    st.set_page_config(
+        page_title="✈️ Flight Finder",
+        page_icon="✈️",
+        layout="wide"
+    )
     
-    print("Choose an option:")
-    print("1. Interactive Flight Search")
-    print("2. View Route Analytics")
-    print("3. Exit")
+    st.title("✈️ Cheapest Flight Finder")
+    st.markdown("Find the best deals on flights between major cities!")
     
-    choice = input("\nEnter your choice (1-3): ")
+    finder = get_flight_finder()
+    cities = finder.get_unique_cities()
     
-    if choice == '1':
-        finder.run_interactive_search()
-    elif choice == '2':
-        finder.get_route_analytics()
-    elif choice == '3':
-        print("👋 Goodbye!")
-    else:
-        print("Invalid choice. Please run the program again.")
-
+    # Create tabs
+    tab1, tab2 = st.tabs(["🔍 Flight Search", "📊 Analytics"])
+    
+    with tab1:
+        st.header("Search Flights")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            from_city = st.selectbox(
+                "🛫 Departure City:",
+                cities,
+                key="from_city"
+            )
+        
+        with col2:
+            # Filter out the departure city from destinations
+            available_destinations = [city for city in cities if city != from_city]
+            to_city = st.selectbox(
+                "🛬 Destination City:",
+                available_destinations,
+                key="to_city"
+            )
+        
+        if st.button("Search Flights", type="primary"):
+            flights = finder.find_flights(from_city, to_city)
+            cheapest = finder.find_cheapest_flight(from_city, to_city)
+            
+            if cheapest is not None:
+                # Display cheapest flight in a highlighted box
+                st.success("🎯 **CHEAPEST FLIGHT FOUND!**")
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("✈️ Airline", cheapest['airline'])
+                    st.metric("💰 Price", f"${cheapest['price']}")
+                
+                with col2:
+                    st.metric("⏰ Duration", cheapest['duration'])
+                    stops_text = "Direct" if cheapest['stops'] == 0 else f"{cheapest['stops']} stop(s)"
+                    st.metric("🔄 Stops", stops_text)
+                
+                with col3:
+                    st.metric("🕐 Departure", cheapest['departure'])
+                    st.metric("🕐 Arrival", cheapest['arrival'])
+                
+                st.divider()
+                
+                # Display all flights
+                st.subheader(f"📋 All Flights ({len(flights)} found)")
+                
+                # Prepare data for display
+                display_flights = flights.copy()
+                display_flights['stops_text'] = display_flights['stops'].apply(
+                    lambda x: "Direct" if x == 0 else f"{x} stop(s)"
+                )
+                display_flights['rank'] = range(1, len(display_flights) + 1)
+                
+                # Reorder columns for display
+                display_cols = ['rank', 'airline', 'price', 'duration', 'departure', 'arrival', 'stops_text']
+                display_flights = display_flights[display_cols]
+                display_flights.columns = ['Rank', 'Airline', 'Price ($)', 'Duration', 'Departure', 'Arrival', 'Stops']
+                
+                st.dataframe(
+                    display_flights,
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                # Price visualization
+                st.subheader("📊 Price Comparison")
+                fig = finder.create_price_chart(flights, from_city, to_city)
+                if fig:
+                    st.pyplot(fig)
+                
+            else:
+                st.error(f"❌ Sorry, no flights found from {from_city} to {to_city}")
+    
+    with tab2:
+        st.header("📊 Flight Route Analytics")
+        
+        df = finder.df
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("💰 Cheapest Flight", f"${df['price'].min()}")
+        with col2:
+            st.metric("💸 Most Expensive", f"${df['price'].max()}")
+        with col3:
+            st.metric("📊 Average Price", f"${df['price'].mean():.2f}")
+        
+        st.divider()
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("✈️ Airlines")
+            airline_stats = df.groupby('airline').agg({
+                'price': ['count', 'mean']
+            }).round(2)
+            airline_stats.columns = ['Flights', 'Avg Price ($)']
+            st.dataframe(airline_stats)
+        
+        with col2:
+            st.subheader("🛣️ Popular Routes")
+            routes = df.groupby(['from', 'to']).agg({
+                'price': ['count', 'min']
+            }).round(2)
+            routes.columns = ['Flights', 'Cheapest ($)']
+            routes = routes.sort_values('Flights', ascending=False)
+            st.dataframe(routes)
 
 if __name__ == "__main__":
     main()
